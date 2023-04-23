@@ -1,4 +1,5 @@
 import fs from "fs";
+import EventEmitter from "events";
 
 function readFile(filename = "example.txt") {
   return new Promise((res, rej) => {
@@ -74,17 +75,27 @@ class File {
   }
 }
 
-class Directory {
+class Directory extends EventEmitter {
   name: string;
   path: string;
+  _size: number;
   items: Array<File | Directory>;
   constructor(name: string, path: string = name) {
+    super();
     this.name = name;
     this.path = path;
+    this._size = 0;
     this.items = [];
   }
 
   insert(item: File | Directory) {
+    if (item instanceof Directory)
+      item.on("change", (size: number) => {
+        this._size += size;
+        this.emit("change", size);
+      });
+    else this.emit("change", item.size);
+    this._size += item.size;
     this.items.push(item);
   }
 
@@ -99,7 +110,7 @@ class Directory {
   }
 
   get size(): number {
-    return this.items.reduce((sum, item) => sum + item.size, 0);
+    return this._size;
   }
 }
 
